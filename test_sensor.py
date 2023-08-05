@@ -6,12 +6,27 @@ Test script to continuously display the output of the two IR sensors.
 from gpiozero import DistanceSensor
 from time import sleep
 
-
+config = {
+    'sensor_1': {
+        'echo': 12,
+        'trigger': 23,
+    },
+    'sensor_2': {
+        'echo': 16,
+        'trigger': 24,
+    },
+    'max_dist': 4,
+}
 if __name__ == '__main__':
 
     # Init distance sensors:
-    sensor_1 = DistanceSensor(23, 24, max_distance=4)
-    sensor_2 = DistanceSensor(27, 22, max_distance=4)
+    # echo, trigger
+    sensor_1 = DistanceSensor(config['sensor_1']['echo'],
+                              config['sensor_1']['trigger'],
+                              max_distance=config['max_dist'])
+    sensor_2 = DistanceSensor(config['sensor_2']['echo'],
+                              config['sensor_2']['trigger'],
+                              max_distance=config['max_dist'])
 
     # Use cache:
     cache = {1: None, 2: None}

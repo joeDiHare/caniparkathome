@@ -8,13 +8,24 @@ send status to remote web app.
 from gpiozero import DistanceSensor
 from time import sleep
 from datetime import datetime
-import pytz
 import requests
 
 THRESHOLD = 1  # Used to determine if a car is parked [meters]
-REMOTE = "https://www.thebaywolves.com/caniparkathome/from-rpi/{}/"
-TZ = pytz.timezone('America/Los_Angeles')
-print(f"Current Time: {datetime.now(TZ)}")
+BASE = "https://www.thebaywolves.com"
+REMOTE = "caniparkathome/from-rpi/{}/"
+print(f"Current Time: {datetime.now()}")
+
+config = {
+    'sensor_1': {
+        'echo': 12,
+        'trigger': 23,
+    },
+    'sensor_2': {
+        'echo': 16,
+        'trigger': 24,
+    },
+    'max_dist': 4,
+}
 
 
 def update_values(nr_free_spots):
@@ -27,7 +38,8 @@ def update_values(nr_free_spots):
 
     print(f'Send API values:\n"{value}"\n\n')
     try:
-        print(f"Response: {requests.get(REMOTE.format(nr_free_spots))}")
+        url = f"{BASE}/{REMOTE.format(nr_free_spots)}"
+        print(f"Response: {requests.get(url)}")
 
     except Exception as error:
         print(f"Error:\n{error}\n\n")
@@ -35,7 +47,7 @@ def update_values(nr_free_spots):
 
 def go_to_sleep_till_next_measurement():
     '''Decide how long to sleep for. Used in between readings.'''
-    dt = datetime.now(TZ)
+    dt = datetime.now()
     if dt.hour < 6:       # 0AM - 6AM: only hourly updates
         wait_for_min = 60 - dt.minute
     elif dt.hour < 14:    # 6AM - 2PM: 5-min updates
@@ -49,8 +61,13 @@ def go_to_sleep_till_next_measurement():
 if __name__ == '__main__':
 
     # Init distance sensors:
-    sensor_1 = DistanceSensor(23, 24, max_distance=4)
-    sensor_2 = DistanceSensor(27, 22, max_distance=4)
+    sensor_1 = DistanceSensor(config['sensor_1']['echo'],
+                              config['sensor_1']['trigger'],
+                              max_distance=config['max_dist'])
+    sensor_2 = DistanceSensor(config['sensor_2']['echo'],
+                              config['sensor_2']['trigger'],
+                              max_distance=config['max_dist'])
+
 
     # Use cache:
     cache = {1: None, 2: None}
@@ -58,7 +75,7 @@ if __name__ == '__main__':
     while True:
         d1 = sensor_1.distance
         S1_free = int(d1 > THRESHOLD)
-        sleep(0.1)
+        sleep(0.5)
         d2 = sensor_2.distance
         S2_free = int(d2 > THRESHOLD)
         print(f'd1: {d1:.1f} m\td2: {d2:.1f} m')
@@ -66,5 +83,5 @@ if __name__ == '__main__':
         if cache[1] is None or cache[1] != S1_free or cache[2] != S2_free:
             cache = {1: S1_free, 2: S2_free}
             update_values(S1_free + S2_free)
-        
+
         go_to_sleep_till_next_measurement()
