@@ -11,6 +11,7 @@ from datetime import datetime
 import requests
 
 THRESHOLD = 1  # Used to determine if a car is parked [meters]
+REPEATS   = 5  # Nr of times each measurement is repeated; must be odd
 BASE = "https://www.thebaywolves.com"
 REMOTE = "caniparkathome/from-rpi/{}/"
 print(f"Current Time: {datetime.now()}")
@@ -26,6 +27,17 @@ config = {
     },
     'max_dist': 4,
 }
+
+
+def calculate_free_spots(sensor):
+    '''Estimate free parking spot using a majority vote over 5 reps.'''
+    free = []
+    for _ in range(REPEATS):
+        free.append(sensor.distance > THRESHOLD)
+        sleep(0.02)
+    S = round(sum(free) / REPEATS)  # majority vote
+    sleep(0.4)
+    return S
 
 
 def update_values(nr_free_spots):
@@ -68,20 +80,15 @@ if __name__ == '__main__':
                               config['sensor_2']['trigger'],
                               max_distance=config['max_dist'])
 
-
     # Use cache:
     cache = {1: None, 2: None}
 
+    # Main open loop
     while True:
-        d1 = sensor_1.distance
-        S1_free = int(d1 > THRESHOLD)
-        sleep(0.5)
-        d2 = sensor_2.distance
-        S2_free = int(d2 > THRESHOLD)
-        print(f'd1: {d1:.1f} m\td2: {d2:.1f} m')
+        s1_free = calculate_free_spots(sensor_1)
+        s2_free = calculate_free_spots(sensor_2)
 
-        if cache[1] is None or cache[1] != S1_free or cache[2] != S2_free:
-            cache = {1: S1_free, 2: S2_free}
-            update_values(S1_free + S2_free)
-
+        if cache[1] is None or cache[1] != s1_free or cache[2] != s2_free:
+            cache = {1: s1_free, 2: s2_free}
+            update_values(s1_free + s2_free)
         go_to_sleep_till_next_measurement()
