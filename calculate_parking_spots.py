@@ -3,6 +3,7 @@ Script to monitor at sensible intervals the max distance from two
 IR sensors (used as proxy for parking spots being available) and 
 send status to remote web app.
 > Jan.23
+Last updated: Nov.23
 '''
 
 from gpiozero import DistanceSensor
@@ -10,7 +11,7 @@ from time import sleep
 from datetime import datetime
 import requests
 
-THRESHOLD = 1  # Used to determine if a car is parked [meters]
+THRESHOLD = 3  # Used to determine if a car is parked [meters]
 REPEATS   = 5  # Nr of times each measurement is repeated; must be odd
 BASE = "https://www.thebaywolves.com"
 REMOTE = "caniparkathome/from-rpi/{}/"
@@ -60,10 +61,10 @@ def update_values(nr_free_spots):
 def go_to_sleep_till_next_measurement():
     '''Decide how long to sleep for. Used in between readings.'''
     dt = datetime.now()
-    if dt.hour < 6:       # 0AM - 6AM: only hourly updates
-        wait_for_min = 60 - dt.minute
-    elif dt.hour < 14:    # 6AM - 2PM: 5-min updates
-        wait_for_min = 5
+    if dt.hour < 6:       # 0AM - 6AM: updae every 10 min
+        wait_for_min = 10 - dt.minute
+    elif dt.hour < 14:    # 6AM - 2PM: 1-min updates
+        wait_for_min = 1
     else:                 # 2PM - Midnight: 1-min updates
         wait_for_min = 1
     print(f'Next measurament in {wait_for_min} min.')
